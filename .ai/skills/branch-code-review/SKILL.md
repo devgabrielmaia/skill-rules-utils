@@ -79,98 +79,39 @@ git diff "$BASE"...HEAD -- '**/*.{py,go,rs,java,rb,php}'
 
 Se não houver diff nem mudanças locais, informar o usuário e encerrar sem inventar achados.
 
-### 2. Detectar stack e convenções do projeto
+### 2. Ler a skill de qualidade e as rules do projeto
 
-Inferir stack a partir de arquivos na raiz e no diff **apenas para contexto** — os critérios desta skill são agnósticos de linguagem.
+Antes de analisar qualquer hunk, ler:
 
-| Sinal | Uso no review |
-|-------|----------------|
-| Manifestos de dependência (`package.json`, `composer.json`, `go.mod`, `pyproject.toml`, etc.) | Identificar stack e ler skill de convenções do projeto, se existir |
-| Estrutura de pastas existente | Critério 12: aderência ao padrão **deste** repositório |
-| Skill `project-conventions` (ou equivalente no projeto) | Critérios 9, 10 e 12 — regras específicas de arquitetura, linguagem e organização |
+- **`.claude/skills/code-quality/SKILL.md`** — fonte única de verdade dos 19 critérios de qualidade, das severidades (Crítico / Relevante / Sugestão) e das subseções Clean Code (critério 8), Object Calisthenics (critério 18) e CQS (critério 19). Os critérios usados no passo 4 **são os dela**, não uma cópia — se a skill mudar, este review muda junto, sem precisar editar esta skill.
+- **`.claude/rules/project-conventions.md`** (ou rule equivalente do projeto) — convenções específicas da stack, usadas nos critérios 9 (arquitetura/separação de camadas), 10 (convenções do projeto) e 12 (estrutura do projeto). Se essa rule não existir no projeto, espelhar idioms já usados no repositório.
 
-**Não** aplicar convenções de uma stack no review de outra. Detalhes de framework, linter, ORM ou estilo de código pertencem à skill de convenções do projeto.
+Inferir a stack a partir de arquivos na raiz e no diff (manifestos de dependência, estrutura de pastas) **apenas para contexto** — os critérios da skill `code-quality` são agnósticos de linguagem; **não** aplicar convenções de uma stack no review de outra.
 
 Ler **apenas** arquivos necessários para contexto das mudanças (callers, interfaces, testes relacionados) — não revisar o arquivo inteiro se só parte dele mudou.
 
 ### 3. Analisar cada hunk alterado
 
-Para cada arquivo/trecho modificado, aplicar os critérios abaixo **somente ao código novo ou alterado**.
+Para cada arquivo/trecho modificado, aplicar **os critérios e severidades de `.claude/skills/code-quality/SKILL.md`** somente ao código novo ou alterado — não redefinir critério, nome ou severidade além do que a skill já define.
 
-Prioridade de severidade ao classificar:
+Prioridade de severidade ao classificar (mesma escala da skill `code-quality`):
 
 1. 🔴 **Crítico** — bug, falha de segurança, regra de negócio incorreta, bloqueador de merge
 2. 🟡 **Relevante** — performance, design ruim, risco futuro, dívida com impacto
 3. 🟢 **Sugestão** — melhoria real e não cosmética
 
-### 4. Critérios de avaliação
+Notas específicas deste review (contexto de diff), que complementam a skill `code-quality` sem alterá-la:
 
-| # | Critério | Severidade padrão |
-|---|----------|-------------------|
-| 1 | **Correção da regra de negócio** — lógica atende o requisito? efeitos colaterais? | 🔴 se incorreto |
-| 2 | **Segurança** — injeção, validação de entrada, auth/authz, exposição de dados sensíveis | 🔴 se vulnerável |
-| 3 | **Performance** — N+1, query em loop, consultas pesadas, falta de paginação, Big O, alto uso de memória | 🟡 ou 🔴 |
-| 4 | **Bugs potenciais / edge cases** — null, divisão por zero, limites, estados inválidos, concorrência lógica | 🔴 ou 🟡 |
-| 5 | **SOLID / KISS / DRY** — apenas violações **claras** com impacto | 🟡 |
-| 6 | **Design** — acoplamento excessivo, fragilidade, baixa coesão | 🟡 |
-| 7 | **Race conditions / vazamento de memória** — threads, async, listeners, recursos não liberados | 🔴 ou 🟡 |
-| 8 | **Clean Code** — ver [regras detalhadas](#clean-code-critério-8) abaixo | 🟢 (escala para 4, 5, 6, 13, 15, 16) |
-| 9 | **Arquitetura / separação de camadas** — responsabilidades nas camadas corretas; detalhes na skill de convenções do projeto | 🟢 (🟡 se quebra grave) |
-| 10 | **Convenções do projeto** — padrões documentados na skill de convenções ou idioms já usados no repo | 🟢 apenas |
-| 11 | **Design Patterns (GoF)** — aplicar padrões do catálogo Gang of Four quando um problema real se encaixar (Strategy, Factory, Observer, Decorator, Adapter, etc.); não forçar onde não há problema | 🟢 apenas |
-| 12 | **Estrutura padrão do projeto** — pastas, naming, organização já usada no repo | 🟡 se inconsistente |
-| 13 | **Tratamento de erros e logs** — exceções engolidas, falta de log em falhas críticas | 🟡 ou 🔴 |
-| 14 | **Mudanças de schema** — indexes, foreign keys, unique, tipos de coluna, rollback/reversão | 🔴 ou 🟡 *(só se houver no diff)* |
-| 15 | **Complexidade cognitiva** — funções longas, muitos níveis de indentação, múltiplas responsabilidades | **🔴 crítico** |
-| 16 | **Duplicação literal** — strings/números mágicos repetidos que deveriam ser constantes | **🔴 crítico** |
-| 17 | **Type check** — tipos incorretos ou ausentes onde a stack do projeto exige tipagem | 🔴 ou 🟡 |
-| 18 | **Object Calisthenics (Jeff Bay)** — ver [regras detalhadas](#object-calisthenics-critério-18) abaixo | 🟢 ou 🟡 |
-| 19 | **CQS (Command Query Separation)** — ver [regras detalhadas](#cqs-critério-19) abaixo | 🟢 apenas |
+- **Critério 14 (Mudanças de schema)** só entra em jogo quando o diff realmente contém migration/alteração de schema.
+- **Critérios 9, 10 e 12** — cruzar com a rule de convenções do projeto lida no passo 2.
+- Itens 8, 10, 11, 18 e 19 nunca são críticos, conforme a skill `code-quality` — salvo se mascararem bug de algum dos critérios 1–7.
 
-**Itens 8, 10, 11, 18 e 19 nunca são críticos** salvo se mascararem bug dos itens 1–7.
-
-#### Clean Code (critério 8)
-
-Regras de legibilidade e manutenção. Várias escalam para critérios críticos/relevantes quando violadas gravemente — ver notas entre parênteses.
-
-1. **Funções pequenas e com uma única responsabilidade** — cada função faz uma coisa; se precisar de "e" para descrever o que faz, quebrar em duas ou em métodos privados. *(critério 15 — 🔴)*
-2. **Máximo de 3 parâmetros por função** — mais que isso, agrupar em objeto/struct/DTO.
-3. **Nomes revelam intenção** — variáveis, funções e classes autoexplicativas, sem precisar de comentário para entender o que fazem.
-4. **Sem números/strings mágicos** — valores literais soltos viram constantes nomeadas. *(critério 16 — 🔴)*
-5. **Sem código morto ou comentado** — deletar, não comentar (o Git guarda o histórico).
-6. **Evitar aninhamento profundo (> 2–3 níveis)** — usar early return / guard clauses em vez de if/else encadeados. *(critério 15 — 🔴)*
-7. **Sem duplicação de lógica (DRY)** — se o mesmo trecho aparece 3+ vezes, extrair numa função/módulo. *(critério 5 — 🟡)*
-8. **Tratamento de erro explícito** — nunca engolir exceções silenciosamente (`catch {}` vazio é proibido). *(critério 13 — 🔴/🟡)*
-9. **Sem null/undefined implícito** — preferir valores default, Option/Maybe ou validação explícita de entrada. *(critérios 4 e 17)*
-10. **Uma classe/módulo, uma responsabilidade (SRP)** — se o nome tem "e", "Manager" ou "Utils" genérico demais, provavelmente faz coisa demais. *(critérios 5 e 6 — 🟡)*
-11. **Testes cobrem comportamento, não implementação** — testes não devem quebrar ao refatorar sem mudar comportamento.
-12. **Sem efeitos colaterais escondidos** — uma função `getX()` não deve alterar estado; se altera, o nome deve deixar isso claro (`updateX`, `fetchAndCache`).
-
-#### Object Calisthenics (critério 18)
-
-Regras de design orientado a objetos (Jeff Bay). Aplicar com pragmatismo — DTOs e modelos de persistência na borda podem ser exceção; domínio e serviços devem seguir mais de perto.
-
-1. **Um ponto por linha (Lei de Demeter)** — evitar encadeamentos como `pedido.getCliente().getEndereco().getCidade()`; cada objeto fala só com vizinhos diretos. Delegar: `pedido.cidadeDeEntrega()`. *(🟡 relevante — acoplamento e fragilidade; ver critério 6)*
-2. **Não abrevie** — nomes completos e claros (`quantidade`, não `qtd`; `gerenciador`, não `gerenc`). *(🟢 sugestão — reforça Clean Code 8.3)*
-3. **Não use a palavra-chave `else`** — preferir early return, guard clauses ou polimorfismo. *(🟢 sugestão — escala para critério 15 se aninhamento grave)*
-4. **Máximo de 2 variáveis de instância por classe** — força coesão; se precisar de mais, quebrar a classe. *(🟡 relevante — ver critérios 5 e 6)*
-5. **Sem getters/setters/properties públicos** — expor comportamento, não estado (Tell, Don't Ask). *(🟡 relevante — encapsulamento no domínio)*
-
-#### CQS (critério 19)
-
-Command Query Separation — cada método é **ou** Command **ou** Query, nunca os dois. *(🟢 sugestão — reforça Clean Code 8.12 e Object Calisthenics 18.5)*
-
-- **Query** — retorna dados, **não altera estado** (sem efeitos colaterais). Idempotente: chamadas repetidas não mudam o resultado.
-- **Command** — **altera estado** (efeito colateral), **não retorna dado** (idealmente `void` / sem valor de retorno útil).
-
-Violação típica: método que persiste, loga ou muta cache e ainda devolve um valor — separar em query + command.
-
-### 5. Produzir e salvar o relatório
+### 4. Produzir e salvar o relatório
 
 **Caminho do arquivo** (nessa ordem):
 
 1. Caminho indicado pelo usuário
-2. `.cursor/reviews/code-review-<branch>-<YYYY-MM-DD>.md`
+2. `code-reviews/code-review-<branch>-<YYYY-MM-DD>.md`
 3. `code-review-<branch>.md` na raiz do projeto
 
 Criar o diretório pai se não existir. Usar `<branch>` sanitizado (substituir `/` por `-`).
@@ -295,8 +236,8 @@ Cada achado deve responder:
 | Skill | Uso |
 |-------|-----|
 | `branch-code-review` (esta) | Achados técnicos, severidade, arquivo `.md` |
+| `code-quality` | Fonte dos critérios e severidades aplicados no passo 3 |
 | `pr-description` | Corpo da PR para GitHub |
-| `project-conventions` | Arquitetura, stack e convenções específicas do repositório |
 | `review-bugbot` / `review-security` | Reviews automatizados adicionais sob demanda |
 
 Se o usuário pedir **review + descrição de PR**, gerar o arquivo `.md` do review **e** entregar o bloco Markdown da PR separadamente.

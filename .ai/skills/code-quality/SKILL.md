@@ -1,13 +1,21 @@
 ---
-description: Critérios de qualidade de código — aplicar ao escrever, alterar ou revisar código
-alwaysApply: true
+name: code-quality
+description: >-
+  Define critérios agnósticos de linguagem e framework para qualidade de
+  código — regra de negócio, segurança, performance, bugs/edge cases,
+  SOLID/KISS/DRY, design, Clean Code, Object Calisthenics, CQS e Design
+  Patterns (GoF) — com níveis de severidade (crítico/relevante/sugestão) e
+  checklist de entrega. Use sempre que escrever, alterar, revisar ou dar
+  review em código, ou quando o contexto pedir padrões de qualidade, boas
+  práticas, patterns, clean code, refactor, code smell ou convenções de
+  código em geral.
 ---
 
 # Qualidade de Código
 
-Critérios **agnósticos de linguagem e framework**. Convenções específicas da stack (estilo, ORM, camadas, linter) ficam na skill de convenções do projeto.
+Critérios **agnósticos de linguagem e framework**. Convenções específicas da stack (estilo, ORM, camadas, linter) ficam na rule de convenções do projeto.
 
-Ao implementar ou modificar código, validar mentalmente cada critério abaixo **antes de considerar a tarefa concluída**. Corrigir problemas críticos no próprio diff; não deixar dívida conhecida sem avisar o usuário.
+Ao implementar, modificar ou revisar código, validar mentalmente cada critério abaixo **antes de considerar a tarefa concluída**. Corrigir problemas críticos no próprio diff; não deixar dívida conhecida sem avisar o usuário.
 
 ## Severidade
 
@@ -30,8 +38,8 @@ Ao implementar ou modificar código, validar mentalmente cada critério abaixo *
 5. **SOLID / KISS / DRY** (relevante) — Apenas violações **claras** com impacto; não refatorar por estética.
 6. **Design** (relevante) — Acoplamento excessivo, fragilidade, baixa coesão, responsabilidades misturadas.
 7. **Race conditions / vazamento** (crítico ou relevante) — Jobs/filas, locks, listeners, recursos (streams, browser, handles) não liberados.
-9. **Arquitetura / separação de camadas** (relevante se quebra grave) — Responsabilidades nas camadas corretas; entrada validada na borda; lógica de domínio fora da camada de apresentação; operações assíncronas onde couber. Detalhes da stack ficam na skill de convenções do projeto.
-12. **Estrutura do projeto** (relevante) — Seguir pastas, naming e organização já usados neste repositório (ou na skill de convenções do projeto, se existir).
+9. **Arquitetura / separação de camadas** (relevante se quebra grave) — Responsabilidades nas camadas corretas; entrada validada na borda; lógica de domínio fora da camada de apresentação; operações assíncronas onde couber. Detalhes da stack ficam na rule de convenções do projeto.
+12. **Estrutura do projeto** (relevante) — Seguir pastas, naming e organização já usados neste repositório (ou na rule de convenções do projeto, se existir).
 13. **Erros e logs** (relevante ou crítico) — Não engolir exceções; logar falhas críticas com contexto; mensagens úteis ao operador.
 14. **Mudanças de schema** (crítico ou relevante) — FKs, indexes em colunas filtradas/joinadas, `unique` onde necessário, tipos adequados, rollback/reversão possível.
 15. **Complexidade cognitiva** (crítico) — Funções curtas e focadas; poucos níveis de indentação; extrair quando misturar responsabilidades.
@@ -41,9 +49,9 @@ Ao implementar ou modificar código, validar mentalmente cada critério abaixo *
 ### Apenas sugestão (não bloquear merge)
 
 8. **Clean Code** — Ver regras detalhadas na seção [Clean Code](#clean-code-critério-8) abaixo. Severidade 🟢 por padrão; violações graves escalam para os critérios 4, 5, 6, 13, 15 e 16.
-10. **Convenções do projeto** — Seguir padrões documentados na skill de convenções do projeto; na ausência dela, espelhar idioms já usados no repositório.
+10. **Convenções do projeto** — Seguir padrões documentados na rule de convenções do projeto; na ausência dela, espelhar idioms já usados no repositório.
 11. **Design Patterns (GoF)** — Usar padrões do catálogo **Gang of Four** sempre que um problema real se encaixar: criacionais (Factory, Builder, Singleton), estruturais (Adapter, Decorator, Facade, Proxy) e comportamentais (Strategy, Observer, Command, Template Method, etc.). Não forçar pattern onde não há problema correspondente; não reinventar abstração só por estética.
-18. **Object Calisthenics (Jeff Bay)** — Ver regras detalhadas na seção [Object Calisthenics](#object-calisthenics-critério-18) abaixo. Severidade 🟢 ou 🟡 conforme cada regra; nunca 🔴.
+18. **Object Calisthenics** — Ver regras detalhadas na seção [Object Calisthenics](#object-calisthenics-critério-18) abaixo. Severidade 🟢 ou 🟡 conforme cada regra; nunca 🔴.
 19. **CQS (Command Query Separation)** — Ver regras detalhadas na seção [CQS](#cqs-critério-19) abaixo. Severidade 🟢 apenas.
 
 ## Clean Code (critério 8)
@@ -65,7 +73,7 @@ Regras de legibilidade e manutenção. Várias escalam para critérios críticos
 
 ## Object Calisthenics (critério 18)
 
-Regras de design orientado a objetos (Jeff Bay). Aplicar com pragmatismo — DTOs e modelos de persistência na borda podem ser exceção; domínio e serviços devem seguir mais de perto.
+Regras de design orientado a objetos. Aplicar com pragmatismo — DTOs e modelos de persistência na borda podem ser exceção; domínio e serviços devem seguir mais de perto.
 
 1. **Um ponto por linha (Lei de Demeter)** — evitar encadeamentos como `pedido.getCliente().getEndereco().getCidade()`; cada objeto fala só com vizinhos diretos. Delegar: `pedido.cidadeDeEntrega()`. *(🟡 relevante — acoplamento e fragilidade; ver critério 6)*
 2. **Não abrevie** — nomes completos e claros (`quantidade`, não `qtd`; `gerenciador`, não `gerenc`). Facilita leitura e busca. *(🟢 sugestão — reforça Clean Code critério 8.3)*
@@ -92,7 +100,7 @@ Violação típica: método que persiste, loga ou muta cache e ainda devolve um 
 - Quando o código novo tiver variação de comportamento, criação complexa, extensão sem herança ou acoplamento a implementações concretas, avaliar qual padrão GoF resolve o caso antes de improvisar.
 - Em classes de domínio: preferir comportamento a getters/setters; evitar train wrecks (um ponto por linha); quebrar classes com mais de 2 campos de instância quando a coesão estiver baixa.
 - Separar leitura de escrita: queries sem efeito colateral; commands sem retorno de dado (CQS).
-- Convenções específicas de linguagem, framework ou ferramentas ficam na **skill de convenções do projeto** — não inventar padrões locais.
+- Convenções específicas de linguagem, framework ou ferramentas ficam na **rule de convenções do projeto** — não inventar padrões locais.
 
 ## Checklist rápido antes de entregar
 
@@ -109,3 +117,11 @@ Violação típica: método que persiste, loga ou muta cache e ainda devolve um 
 - [ ] Erros logados/tratados onde falha é operacionalmente relevante
 - [ ] Mudanças de schema com indexes/constraints adequados (se aplicável)
 - [ ] Aderência à estrutura de pastas do projeto
+
+## Relação com outras skills
+
+| Skill | Uso |
+|-------|-----|
+| `code-quality` (esta) | Critérios e severidades para escrever ou revisar código |
+| `branch-code-review` | Aplica estes critérios no diff da branch atual e gera relatório |
+| Rule de convenções do projeto | Complementa os critérios 9, 10 e 12 com padrões específicos da stack |

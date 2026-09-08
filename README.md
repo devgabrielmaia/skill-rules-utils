@@ -8,11 +8,11 @@ Coleção de **skills** e **rules** para agentes de IA (Cursor e compatíveis). 
 agent-resources/
 ├── skills/          # Skills do agente (cada pasta contém um SKILL.md)
 │   ├── branch-code-review/
+│   ├── code-quality/
 │   ├── pr-description/
 │   ├── project-conventions/
 │   └── project-docs/
 └── rules/           # Regras persistentes (.mdc)
-    ├── code-quality.mdc
     ├── project-conventions.mdc
     └── no-auto-tests.mdc
 ```
