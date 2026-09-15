@@ -12,6 +12,8 @@ description: >-
 
 Revisa **somente o código alterado** nesta branch. Entrega um relatório técnico em arquivo `.md` bem formatado.
 
+Esta skill define o **padrão do review** (coleta de diff, severidades, estrutura do relatório) — não os critérios de qualidade de código em si. Critérios de qualidade, padrões, design e arquitetura vêm da skill `code-quality` quando ela existir; na ausência dela, usa-se o [checklist básico](#checklist-básico-fallback) definido aqui.
+
 **Não** é descrição de PR (use `pr-description` para isso).
 
 ## Regras invioláveis
@@ -79,32 +81,28 @@ git diff "$BASE"...HEAD -- '**/*.{py,go,rs,java,rb,php}'
 
 Se não houver diff nem mudanças locais, informar o usuário e encerrar sem inventar achados.
 
-### 2. Ler a skill de qualidade e as rules do projeto
+### 2. Definir os critérios de qualidade
 
-Antes de analisar qualquer hunk, ler:
+Esta skill define **o padrão do review** (o quê coletar, como classificar severidade, como estruturar o relatório) — ela **não** redefine critérios de qualidade de código, design ou arquitetura. Para isso:
 
-- **`.claude/skills/code-quality/SKILL.md`** — fonte única de verdade dos 19 critérios de qualidade, das severidades (Crítico / Relevante / Sugestão) e das subseções Clean Code (critério 8), Object Calisthenics (critério 18) e CQS (critério 19). Os critérios usados no passo 4 **são os dela**, não uma cópia — se a skill mudar, este review muda junto, sem precisar editar esta skill.
-- **`.claude/rules/project-conventions.md`** (ou rule equivalente do projeto) — convenções específicas da stack, usadas nos critérios 9 (arquitetura/separação de camadas), 10 (convenções do projeto) e 12 (estrutura do projeto). Se essa rule não existir no projeto, espelhar idioms já usados no repositório.
+- **Se existir uma skill `code-quality`** disponível para o agente (mesma coleção de skills desta ferramenta): ler a skill inteira e usar **exatamente** os critérios, severidades e subseções dela (Clean Code, Object Calisthenics, CQS, Design Patterns GoF etc.) — fonte única de verdade. Não redefinir critério, nome ou severidade além do que ela já define; se ela mudar, este review muda junto, sem precisar editar esta skill.
+- **Se não existir:** aplicar o [Checklist básico (fallback)](#checklist-básico-fallback) definido mais abaixo nesta própria skill.
 
-Inferir a stack a partir de arquivos na raiz e no diff (manifestos de dependência, estrutura de pastas) **apenas para contexto** — os critérios da skill `code-quality` são agnósticos de linguagem; **não** aplicar convenções de uma stack no review de outra.
+Inferir a stack a partir de arquivos na raiz e no diff (manifestos de dependência, estrutura de pastas) **apenas para contexto** — os critérios de qualidade (da skill `code-quality` ou do checklist básico) são agnósticos de linguagem.
 
 Ler **apenas** arquivos necessários para contexto das mudanças (callers, interfaces, testes relacionados) — não revisar o arquivo inteiro se só parte dele mudou.
 
 ### 3. Analisar cada hunk alterado
 
-Para cada arquivo/trecho modificado, aplicar **os critérios e severidades de `.claude/skills/code-quality/SKILL.md`** somente ao código novo ou alterado — não redefinir critério, nome ou severidade além do que a skill já define.
+Para cada arquivo/trecho modificado, aplicar **os critérios definidos no passo 2** (skill `code-quality` ou checklist básico) somente ao código novo ou alterado — não redefinir critério, nome ou severidade além do que a fonte usada já define.
 
-Prioridade de severidade ao classificar (mesma escala da skill `code-quality`):
+Prioridade de severidade ao classificar:
 
 1. 🔴 **Crítico** — bug, falha de segurança, regra de negócio incorreta, bloqueador de merge
 2. 🟡 **Relevante** — performance, design ruim, risco futuro, dívida com impacto
 3. 🟢 **Sugestão** — melhoria real e não cosmética
 
-Notas específicas deste review (contexto de diff), que complementam a skill `code-quality` sem alterá-la:
-
-- **Critério 14 (Mudanças de schema)** só entra em jogo quando o diff realmente contém migration/alteração de schema.
-- **Critérios 9, 10 e 12** — cruzar com a rule de convenções do projeto lida no passo 2.
-- Itens 8, 10, 11, 18 e 19 nunca são críticos, conforme a skill `code-quality` — salvo se mascararem bug de algum dos critérios 1–7.
+Nota: quando a fonte de critérios for a skill `code-quality`, o critério de mudanças de schema só entra em jogo se o diff realmente contiver migration/alteração de schema, e os critérios marcados como "apenas sugestão" nunca são críticos — salvo se mascararem bug de regra de negócio, segurança, edge case ou vazamento de recurso.
 
 ### 4. Produzir e salvar o relatório
 
@@ -117,6 +115,25 @@ Notas específicas deste review (contexto de diff), que complementam a skill `co
 Criar o diretório pai se não existir. Usar `<branch>` sanitizado (substituir `/` por `-`).
 
 Preencher o template abaixo. **Omitir seções vazias** (não escrever "N/A"). Ordenar achados: 🔴 → 🟡 → 🟢.
+
+---
+
+## Checklist básico (fallback)
+
+Usado **somente quando não há skill `code-quality` disponível**. Cobre o essencial sem duplicar a profundidade de uma skill dedicada (SOLID, Clean Code, Object Calisthenics, CQS, Design Patterns GoF etc. ficam de fora — se o usuário quiser esse nível de rigor recorrente, sugerir criar a skill `code-quality` no projeto).
+
+| # | Critério | Severidade típica |
+|---|----------|--------------------|
+| 1 | Regra de negócio atende ao requisito, sem efeito colateral indevido em estados ou dados relacionados | 🔴 |
+| 2 | Segurança: injection, validação de entrada, exposição de dados sensíveis/segredos, auth/authz | 🔴 |
+| 3 | Bugs / edge cases: null, divisão por zero, limites, estados inválidos, concorrência lógica | 🔴 ou 🟡 |
+| 4 | Performance óbvia: N+1, query em loop, ausência de paginação em coleção grande | 🟡 |
+| 5 | Duplicação evidente de lógica ou literais mágicos repetidos | 🟡 |
+| 6 | Funções/classes com responsabilidade única; nomes que revelam intenção | 🟡 |
+| 7 | Erros tratados explicitamente — sem `catch`/`except` vazio, sem exceção engolida | 🟡 |
+| 8 | Consistência com os idioms já usados no arquivo/módulo alterado | 🟢 |
+
+Não aplicar itens fora dessa tabela quando o checklist básico for a fonte usada — isso evita reimplementar a skill `code-quality` de forma incompleta dentro deste review.
 
 ---
 
@@ -235,8 +252,8 @@ Cada achado deve responder:
 
 | Skill | Uso |
 |-------|-----|
-| `branch-code-review` (esta) | Achados técnicos, severidade, arquivo `.md` |
-| `code-quality` | Fonte dos critérios e severidades aplicados no passo 3 |
+| `branch-code-review` (esta) | Padrão do review: coleta de diff, severidades, estrutura do relatório |
+| `code-quality` | Fonte dos critérios de qualidade/design/arquitetura quando disponível (passo 2); ausente, usa-se o checklist básico desta skill |
 | `pr-description` | Corpo da PR para GitHub |
 | `review-bugbot` / `review-security` | Reviews automatizados adicionais sob demanda |
 
